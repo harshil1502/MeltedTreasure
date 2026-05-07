@@ -22,7 +22,10 @@ class StrategyConfig:
 
 
 class Strategy(ABC):
-    config: StrategyConfig
+    """Subclasses should expose a `config: StrategyConfig` attribute and
+    implement `signals`. Kept free of dataclass fields so subclasses can
+    use @dataclass without inheritance ordering headaches.
+    """
 
     @abstractmethod
     def signals(self, prices: pd.DataFrame) -> pd.DataFrame:
