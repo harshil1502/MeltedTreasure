@@ -94,3 +94,40 @@ def adjusted_close_panel(
         adj = df[["Adj Close"]].rename(columns={"Adj Close": symbols[0]})
     adj.index = pd.to_datetime(adj.index)
     return adj.sort_index()
+
+
+def clean_split_artifacts(
+    prices: pd.DataFrame,
+    window: int = 21,
+    threshold: float = 0.5,
+) -> pd.DataFrame:
+    """Replace prices that are far from their local rolling median.
+
+    yfinance's adjusted-close on Indian ETFs has known mis-applied stock splits
+    (NIFTYBEES 1:10 and GOLDBEES 1:100 in Dec 2019, possibly others). The bad
+    prints are far below their surroundings and persist for 1-3 days. A
+    rolling-median filter detects values that diverge >`threshold` from the
+    21-day median centered on each day; flagged values are replaced by the
+    local median. Logs every replacement.
+
+    This is destructive — call only after deciding the policy. For research
+    correctness we prefer to fix the input, not let the artifact propagate
+    into signals or PnL.
+    """
+    cleaned = prices.copy()
+    rolling = prices.rolling(window=window, center=True, min_periods=window // 2).median()
+    deviation = (prices / rolling - 1).abs()
+    flagged = deviation > threshold
+
+    n_replaced = int(flagged.sum().sum())
+    if n_replaced:
+        for col in flagged.columns:
+            mask = flagged[col].fillna(False)
+            if mask.any():
+                bad_dates = prices.index[mask]
+                print(
+                    f"[clean_split_artifacts] {col}: replacing {len(bad_dates)} value(s) "
+                    f"({bad_dates[0].date()}..{bad_dates[-1].date()})"
+                )
+                cleaned.loc[mask, col] = rolling.loc[mask, col]
+    return cleaned
