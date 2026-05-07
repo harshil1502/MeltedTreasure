@@ -1,7 +1,12 @@
 {
   "initial_capital": 10000.0,
-  "cash": 10000.0,
-  "positions": {},
+  "cash": 707.4897845161595,
+  "positions": {
+    "JUNIORBEES": {
+      "qty": 12,
+      "avg_cost": 773.07
+    }
+  },
   "signals": [
     {
       "date": "2026-05-06",
@@ -10,11 +15,20 @@
       }
     }
   ],
-  "fills": [],
+  "fills": [
+    {
+      "date": "2026-05-07",
+      "symbol": "JUNIORBEES",
+      "side": "BUY",
+      "qty": 12,
+      "price": 773.07,
+      "cost_total": 15.67
+    }
+  ],
   "equity_history": [
     {
       "date": "2026-05-06",
-      "equity": 10000.0
+      "equity": 9984.33
     }
   ]
 }
