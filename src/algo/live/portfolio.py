@@ -56,9 +56,12 @@ class PaperPortfolio:
         path.write_text(json.dumps(self.__dict__, indent=2, default=str))
 
     def record_signal(self, signal_date: date, weights: dict[str, float]) -> None:
-        self.signals.append(
-            {"date": signal_date.isoformat(), "weights": weights}
-        )
+        date_str = signal_date.isoformat()
+        for s in self.signals:
+            if s["date"] == date_str:
+                s["weights"] = weights
+                return
+        self.signals.append({"date": date_str, "weights": weights})
 
     def record_fill(
         self,
@@ -121,5 +124,10 @@ class PaperPortfolio:
             prices.get(sym, 0.0) * pos["qty"]
             for sym, pos in self.positions.items()
         )
-        self.equity_history.append({"date": at.isoformat(), "equity": round(equity, 2)})
+        date_str = at.isoformat()
+        rounded = round(equity, 2)
+        if self.equity_history and self.equity_history[-1]["date"] == date_str:
+            self.equity_history[-1]["equity"] = rounded
+        else:
+            self.equity_history.append({"date": date_str, "equity": rounded})
         return equity

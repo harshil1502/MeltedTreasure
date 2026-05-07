@@ -1,0 +1,88 @@
+name: algo
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # 12:00 UTC = 17:30 IST (2 hours after Indian market close at 15:30 IST).
+    # Mon-Fri only; we still run on Indian holidays but the price feed will
+    # return the last trading day's data, which is fine.
+    # NOTE: scheduled runs only fire from the default branch.
+    - cron: '0 12 * * 1-5'
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" pyarrow yfinance
+      - name: Run pytest
+        run: PYTHONPATH=src pytest -q
+
+  paper-run:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history to push back
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pyarrow yfinance
+
+      - name: Generate signal (record if rebalance day)
+        run: |
+          PYTHONPATH=src python -m algo.live.cli \
+            --state paper_log/state.json signal --record
+
+      - name: Mark to market
+        run: |
+          PYTHONPATH=src python -m algo.live.cli \
+            --state paper_log/state.json mark
+
+      - name: Show portfolio status
+        run: |
+          PYTHONPATH=src python -m algo.live.cli \
+            --state paper_log/state.json status
+
+      - name: Commit and push if state changed
+        run: |
+          if [[ -z "$(git status --porcelain paper_log/)" ]]; then
+            echo "No changes to paper_log/"
+            exit 0
+          fi
+          git config user.name "algo-bot"
+          git config user.email "algo-bot@users.noreply.github.com"
+          git add paper_log/
+          git commit -m "paper-run $(date -u +%Y-%m-%d) [skip ci]"
+          # Retry push up to 3 times with backoff in case of concurrent commits
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Push succeeded on attempt $i"
+              exit 0
+            fi
+            sleep $((i * 2))
+          done
+          echo "Push failed after 3 attempts"
+          exit 1
