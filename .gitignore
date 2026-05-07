@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data cache (do NOT commit market data)
+data/cache/
+data/raw/
+data/processed/
+*.parquet
+*.csv
+!src/**/*.csv
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+kite_*.json
+
+# Backtest artifacts
+backtest_results/
+*.pkl
+*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Coverage / test
+.coverage
+.pytest_cache/
+htmlcov/
